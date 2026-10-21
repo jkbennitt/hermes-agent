@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:0.11.6-python3.13-trixie@sha256:b3c543b6c4f23a5f2df22866bd7857e5d304b67a564f4feab6ac22044dde719b AS uv_source
+FROM ghcr.io/astral-sh/uv:0.13.4-python3.13-trixie@sha256:d6b4d13b4d926ca0deb4f1bc454aaa7e3bbb02ce1929ec1bd2e94a18c47ad757 AS uv_source
 FROM tianon/gosu:1.19-trixie@sha256:3b176695959c71e123eb390d427efc665eeb561b1540e82679c15e992006b8b9 AS gosu_source
 FROM debian:13.4
 
@@ -9,10 +9,22 @@ ENV PYTHONUNBUFFERED=1
 # install survives the /opt/data volume overlay at runtime.
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/hermes/.playwright
 
-# Install system dependencies in one layer, clear APT cache
+# Install system dependencies in one layer, clear APT cache.
+# debian:13.4 predates the eMudhra distrust (GHSA-6q48-6c7w-9gw2).
+# Track the latest ca-certificates from the configured trixie suites
+# (including trixie-security) instead of an exact version pin, which
+# breaks once Debian supersedes 20250419+deb13u1. Fail the build if
+# the installed bundle is older than that security update.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential nodejs npm python3 ripgrep ffmpeg gcc python3-dev libffi-dev procps && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    apt-get upgrade -y ca-certificates && \
+    v="$(dpkg-query -W -f '${Version}' ca-certificates)" && \
+    if ! dpkg --compare-versions "$v" ge "20250419+deb13u1"; then \
+        echo "ca-certificates $v is older than 20250419+deb13u1" >&2; \
+        exit 1; \
+    fi && \
     rm -rf /var/lib/apt/lists/*
 
 # Non-root user for runtime; UID can be overridden via HERMES_UID at runtime
