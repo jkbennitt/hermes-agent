@@ -20,9 +20,9 @@ RUN apt-get update && \
         build-essential nodejs npm python3 ripgrep ffmpeg gcc python3-dev libffi-dev procps && \
     apt-get install -y --no-install-recommends ca-certificates && \
     apt-get upgrade -y ca-certificates && \
-    v="$$(dpkg-query -W -f '$${Version}' ca-certificates)" && \
-    if ! dpkg --compare-versions "$$v" ge "20250419+deb13u1"; then \
-        echo "ca-certificates $$v is older than 20250419+deb13u1" >&2; \
+    v="$(dpkg-query -W -f '${Version}' ca-certificates)" && \
+    if ! dpkg --compare-versions "$v" ge "20250419+deb13u1"; then \
+        echo "ca-certificates $v is older than 20250419+deb13u1" >&2; \
         exit 1; \
     fi && \
     rm -rf /var/lib/apt/lists/*
